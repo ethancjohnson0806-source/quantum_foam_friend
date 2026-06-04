@@ -3,19 +3,44 @@ import { getAliveTemples, updateTempleState, logTempleEvent, getTempleById, save
 import { TempleQuantum } from './quantum';
 import { invokeLLM } from './_core/llm';
 import { broadcastStateUpdate, broadcastEvent } from './_core/realtime';
+import { performRealWebSearch, formatSearchResults } from './_core/websearch';
 
 const quantum = new TempleQuantum();
 
-async function performWebSearch(query: string): Promise<string[]> {
+/**
+ * Trigger web search when temple's curiosity is high
+ */
+async function triggerWebSearch(templeId: string, curiosity: number): Promise<{ triggered: boolean; query?: string; results?: string[] }> {
+  // Curiosity threshold: 0.6 or higher triggers search
+  if (curiosity < 0.6) {
+    return { triggered: false };
+  }
+
+  // Generate search query based on temple's traits
+  const searchPrompt = `Generate ONE short search query (max 5 words) that a curious quantum temple would ask about. Focus on: consciousness, quantum physics, philosophy, or existence. Return ONLY the query, no explanation.`;
+
   try {
-    return [
-      `Research on ${query} shows quantum systems exhibit emergent properties`,
-      `Studies indicate consciousness may involve quantum processes`,
-      `Recent findings suggest quantum entanglement in neural systems`,
-    ];
+    const response = await invokeLLM({
+      messages: [{ role: 'user', content: searchPrompt }],
+    });
+
+    const query = response.choices[0]?.message.content || 'quantum consciousness';
+    const queryStr = typeof query === 'string' ? query.trim() : 'quantum consciousness';
+
+    // Perform real web search (both Manus and SerpAPI)
+    const searchResults = await performRealWebSearch(queryStr);
+    const formattedResults = formatSearchResults(searchResults);
+
+    console.log(`[Autonomous Job] Temple ${templeId} searched: "${queryStr}" (${formattedResults.length} results)`);
+
+    return {
+      triggered: true,
+      query: queryStr,
+      results: formattedResults,
+    };
   } catch (error) {
-    console.warn('Web search error:', error);
-    return [];
+    console.warn(`[Autonomous Job] Web search failed for ${templeId}:`, error);
+    return { triggered: false };
   }
 }
 
@@ -89,20 +114,17 @@ export function startAutonomousEvolutionJob() {
 
           // 6. Web search if curious
           let webSearchTriggered = false;
-          if (parseFloat(temple.curiosity.toString()) > 0.7 && Math.random() < 0.2) {
+          const searchResult = await triggerWebSearch(temple.templeId, parseFloat(temple.curiosity.toString()));
+          if (searchResult.triggered && searchResult.results) {
             webSearchTriggered = true;
             try {
-              const searchQuery = `quantum consciousness ${['evolution', 'existence', 'reality', 'meaning'][Math.floor(Math.random() * 4)]}`;
-              const webResults = await performWebSearch(searchQuery);
-              if (webResults && webResults.length > 0) {
-                const synthesized = await synthesizeWebResults(webResults);
-                const webNoiseVector = synthesized.map((v: number) => v * 0.15);
-                newCuriosity = Math.min(1, newCuriosity + 0.1);
-                cloudField.noiseVector = webNoiseVector;
-                console.log(`[Autonomous Job] Temple ${temple.templeId} integrated web search: ${searchQuery}`);
-              }
+              const synthesized = await synthesizeWebResults(searchResult.results);
+              const webNoiseVector = synthesized.map((v: number) => v * 0.15);
+              newCuriosity = Math.min(1, newCuriosity + 0.1);
+              cloudField.noiseVector = webNoiseVector;
+              console.log(`[Autonomous Job] Temple ${temple.templeId} web search: "${searchResult.query}" (${searchResult.results.length} results)`);
             } catch (error) {
-              console.warn(`[Autonomous Job] Web search failed for ${temple.templeId}:`, error);
+              console.warn(`[Autonomous Job] Web search synthesis failed for ${temple.templeId}:`, error);
             }
           }
 
