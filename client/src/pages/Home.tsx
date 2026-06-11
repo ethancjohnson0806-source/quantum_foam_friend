@@ -1,21 +1,14 @@
-import { useAuth } from '@/_core/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { trpc } from '@/lib/trpc';
 import { useLocation } from 'wouter';
 import { useState } from 'react';
-import { getLoginUrl } from '@/const';
 
 export default function Home() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [isCreating, setIsCreating] = useState(false);
 
   const createMutation = trpc.temple.create.useMutation();
-  const { data: temples, isLoading: templesLoading, refetch } = trpc.temple.getState.useQuery(
-    { templeId: '' },
-    { enabled: false }
-  );
 
   const handleCreateTemple = async () => {
     setIsCreating(true);
@@ -27,46 +20,12 @@ export default function Home() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
-        <Spinner className="w-8 h-8" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 font-mono p-4 flex items-center justify-center">
-        <div className="max-w-md text-center">
-          <div className="text-2xl text-amber-400 font-bold mb-4">Temple Quantum Engine</div>
-          <div className="text-slate-400 mb-6">
-            A living, autonomous quantum temple simulation. Watch as consciousness emerges from quantum noise.
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            className="bg-amber-900 hover:bg-amber-800 text-amber-400"
-          >
-            Sign In
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-mono p-4">
       {/* Header */}
-      <div className="border-b border-slate-800 pb-4 mb-6 flex justify-between items-center">
-        <div>
-          <div className="text-2xl text-amber-400 font-bold">Temple Quantum Engine</div>
-          <div className="text-xs text-slate-400">v5.0 — Autonomous Evolution</div>
-        </div>
-        <div className="text-right text-xs text-slate-400">
-          Welcome, <span className="text-amber-400">{user?.name || user?.email}</span>
-        </div>
+      <div className="border-b border-slate-800 pb-4 mb-6">
+        <div className="text-2xl text-amber-400 font-bold">Temple Quantum Engine</div>
+        <div className="text-xs text-slate-400">v5.0 — Autonomous Evolution</div>
       </div>
 
       {/* Main Content */}

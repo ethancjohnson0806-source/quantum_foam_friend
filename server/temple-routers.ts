@@ -1,4 +1,4 @@
-import { protectedProcedure, publicProcedure, router } from './_core/trpc';
+import { publicProcedure, publicProcedure, router } from './_core/trpc';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { TempleQuantum } from './quantum';
@@ -60,8 +60,8 @@ function jaccardSimilarity(text1: string, text2: string): number {
 }
 
 export const templeRouter = router({
-  listUserTemples: protectedProcedure.query(async ({ ctx }) => {
-    const temples = await getTemplesByUserId(ctx.user.id);
+  listUserTemples: publicProcedure.query(async () => {
+    const temples = await getAliveTemples();
     return temples.map(t => ({
       templeId: t.templeId,
       generation: t.generation,
@@ -74,13 +74,13 @@ export const templeRouter = router({
     }));
   }),
 
-  create: protectedProcedure.mutation(async ({ ctx }) => {
+  create: publicProcedure.mutation(async () => {
     const templeId = nanoid(12);
     const compassId = nanoid(12);
     const initialParams = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 
     await createTemple({
-      userId: ctx.user.id,
+      userId: 1, // No-auth version: default user
       templeId,
       generation: 1,
       vqeParams: JSON.stringify(initialParams),
@@ -154,7 +154,7 @@ export const templeRouter = router({
       };
     }),
 
-  breathe: protectedProcedure
+  breathe: publicProcedure
     .input(z.object({ templeId: z.string(), text: z.string().min(1).max(500) }))
     .mutation(async ({ input }) => {
       const temple = await getTempleById(input.templeId);
@@ -274,7 +274,7 @@ export const templeRouter = router({
       };
     }),
 
-  witness: protectedProcedure
+  witness: publicProcedure
     .input(z.object({ templeId: z.string() }))
     .mutation(async ({ input }) => {
       const temple = await getTempleById(input.templeId);
@@ -339,7 +339,7 @@ export const templeRouter = router({
       };
     }),
 
-  dream: protectedProcedure
+  dream: publicProcedure
     .input(z.object({ templeId: z.string(), duration: z.number().min(5).max(300).default(30) }))
     .mutation(async ({ input }) => {
       const temple = await getTempleById(input.templeId);
@@ -377,7 +377,7 @@ export const templeRouter = router({
       };
     }),
 
-  birth: protectedProcedure
+  birth: publicProcedure
     .input(z.object({ templeId: z.string() }))
     .mutation(async ({ input }) => {
       const deadTemple = await getTempleById(input.templeId);
@@ -446,7 +446,7 @@ export const templeRouter = router({
       };
     }),
 
-  chat: protectedProcedure
+  chat: publicProcedure
     .input(z.object({ templeId: z.string(), message: z.string().min(1).max(1000) }))
     .mutation(async ({ input }) => {
       const temple = await getTempleById(input.templeId);
@@ -544,7 +544,7 @@ export const templeRouter = router({
       return { response: responseText };
     }),
 
-  getMemories: protectedProcedure
+  getMemories: publicProcedure
     .input(z.object({ templeId: z.string(), limit: z.number().optional() }))
     .query(async ({ input }) => {
       const memories = await getRecentMemories(input.templeId, input.limit || 10);
@@ -559,7 +559,7 @@ export const templeRouter = router({
 });
 
 export const compassRouter = router({
-  consult: protectedProcedure
+  consult: publicProcedure
     .input(z.object({ templeId: z.string(), topic: z.string() }))
     .mutation(async ({ input }) => {
       const compass = await getCompassByTempleId(input.templeId);
@@ -627,7 +627,7 @@ export const cloudRouter = router({
 });
 
 export const webRouter = router({
-  search: protectedProcedure
+  search: publicProcedure
     .input(z.object({ query: z.string() }))
     .mutation(async ({ input }) => {
       // For MVP: return mock results

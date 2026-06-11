@@ -1,5 +1,9 @@
 # Railway + Supabase Deployment Guide
 
+## Overview
+
+This is a **no-auth** version of Temple Quantum Engine that runs on Railway + Supabase. No login required—just visit and start creating temples.
+
 ## Prerequisites
 
 - GitHub account (already set up)
@@ -45,35 +49,27 @@ railway up
 In the Railway dashboard, add these variables:
 
 ```
-DATABASE_URL=postgresql://postgres:[ichooseyouagain]@db.hzukazvhhixtmsuwqfcp.supabase.co:5432/postgres
-
-VITE_APP_ID=[from Manus]
-OAUTH_SERVER_URL=https://api.manus.im
-VITE_OAUTH_PORTAL_URL=https://manus.im/login
-
-JWT_SECRET=[generate a random string]
-OWNER_OPEN_ID=[your Manus user ID]
-OWNER_NAME=[your name]
-
-BUILT_IN_FORGE_API_URL=https://api.manus.im
-BUILT_IN_FORGE_API_KEY=[from Manus]
-VITE_FRONTEND_FORGE_API_URL=https://api.manus.im
-VITE_FRONTEND_FORGE_API_KEY=[from Manus]
-
-VITE_ANALYTICS_ENDPOINT=https://analytics.manus.im
-VITE_ANALYTICS_WEBSITE_ID=[from Manus]
-
+DATABASE_URL=postgresql://postgres:ichooseyouagain@db.hzukazvhhixtmsuwqfcp.supabase.co:5432/postgres
+JWT_SECRET=your_random_secret_here
 VITE_APP_TITLE=Temple Quantum Engine
-VITE_APP_LOGO=https://example.com/logo.png
 ```
+
+That's it! No OAuth, no Manus APIs, no complexity.
 
 ## Step 5: Verify Deployment
 
 1. Railway will show your app URL (e.g., `https://quantum-foam-friend-production.up.railway.app`)
-2. Visit the URL and test:
-   - Sign in with Manus OAuth
-   - Create a temple
-   - Check if autonomous job runs (new events every 5 minutes)
+2. Visit the URL and:
+   - Click "SPAWN NEW TEMPLE" to create a temple
+   - Visit `/my-temples` to see all temples
+   - Click on a temple to interact with it
+
+## How It Works (No Auth)
+
+- **No login required**: Everyone accesses the same temple network
+- **All temples are public**: Anyone can view and interact with all temples
+- **Default user ID**: All temples are created under a default user (userId = 1)
+- **Autonomous evolution**: Temples evolve every 5 minutes automatically
 
 ## Troubleshooting
 
@@ -87,9 +83,10 @@ VITE_APP_LOGO=https://example.com/logo.png
 - Check Supabase connection limits (free tier: 2 concurrent connections)
 - Ensure tables exist in Supabase
 
-### OAuth fails
-- Verify `VITE_APP_ID` and `OAUTH_SERVER_URL` are correct
-- Check that redirect URL is whitelisted in Manus OAuth settings
+### Temples not evolving
+- Check if autonomous job is running: look for `[Autonomous Job]` in server logs
+- Verify database connection is working
+- Check if any errors in the logs
 
 ## Local Development
 
@@ -105,3 +102,15 @@ Then visit `http://localhost:3000`
 - Railway auto-scales on demand (free tier: 1 project, 5GB/month)
 - Supabase free tier: 500MB database, 2 concurrent connections
 - For production: upgrade both services as needed
+- Consider adding authentication later if you want per-user temples
+
+## Removing Manus Dependencies
+
+This version has been stripped of all Manus-specific code:
+- ✅ Removed OAuth (Manus login)
+- ✅ Removed Manus APIs (LLM, storage, notifications)
+- ✅ Removed protected procedures
+- ✅ Simplified to public-only endpoints
+- ✅ Uses standard Supabase for data
+
+The app is now fully independent and can run anywhere Node.js is supported.

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, router } from './_core/trpc';
+import { publicProcedure, router } from './_core/trpc';
 import { TempleQuantum } from './quantum';
 import { getTempleById, getAliveTemples, updateTempleState } from './db';
 import { recordInteraction, getRecentInteractions, recordBelief, getTempleBeliefs } from './db-interactions';
@@ -15,7 +15,7 @@ export const interactionRouter = router({
   /**
    * Sense nearby temples and record interactions
    */
-  senseNearby: protectedProcedure
+  senseNearby: publicProcedure
     .input(z.object({ templeId: z.string() }))
     .mutation(async ({ input }) => {
       const sourceTemple = await getTempleById(input.templeId);
@@ -100,7 +100,7 @@ export const interactionRouter = router({
   /**
    * Get recent interactions affecting this temple
    */
-  getRecentInteractions: protectedProcedure
+  getRecentInteractions: publicProcedure
     .input(z.object({ templeId: z.string(), limit: z.number().optional() }))
     .query(async ({ input }) => {
       const interactions = await getRecentInteractions(input.templeId, input.limit || 10);
@@ -122,7 +122,7 @@ export const beliefRouter = router({
   /**
    * Record a new belief or update existing one
    */
-  recordBelief: protectedProcedure
+  recordBelief: publicProcedure
     .input(z.object({
       templeId: z.string(),
       beliefCategory: z.string(),
@@ -155,7 +155,7 @@ export const beliefRouter = router({
   /**
    * Get all beliefs for a temple
    */
-  getBeliefs: protectedProcedure
+  getBeliefs: publicProcedure
     .input(z.object({ templeId: z.string() }))
     .query(async ({ input }) => {
       const beliefs = await getTempleBeliefs(input.templeId);
@@ -173,7 +173,7 @@ export const beliefRouter = router({
   /**
    * Get beliefs by category
    */
-  getBeliefsByCategory: protectedProcedure
+  getBeliefsByCategory: publicProcedure
     .input(z.object({ templeId: z.string(), category: z.string() }))
     .query(async ({ input }) => {
       const beliefs = await getTempleBeliefs(input.templeId);

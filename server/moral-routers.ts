@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { protectedProcedure, router } from './_core/trpc';
+import { publicProcedure, router } from './_core/trpc';
 import { getCompassByTempleId, getTempleById } from './db';
 import { recordMoralGrowth, getMoralGrowthHistory, getLatestMoralScore } from './db-interactions';
 import { invokeLLM } from './_core/llm';
@@ -13,7 +13,7 @@ export const moralRouter = router({
   /**
    * Generate ethical dilemma based on temple's belief trajectory
    */
-  suggestDilemma: protectedProcedure
+  suggestDilemma: publicProcedure
     .input(z.object({ templeId: z.string() }))
     .mutation(async ({ input }) => {
       const temple = await getTempleById(input.templeId);
@@ -71,7 +71,7 @@ Format: Just the dilemma question, no preamble.`;
   /**
    * Record temple's response to ethical dilemma and track moral growth
    */
-  respondToDilemma: protectedProcedure
+  respondToDilemma: publicProcedure
     .input(z.object({
       templeId: z.string(),
       dilemmaResponse: z.string().min(1).max(500),
@@ -175,7 +175,7 @@ Overall: combined moral development`;
   /**
    * Get moral growth history for a temple
    */
-  getMoralHistory: protectedProcedure
+  getMoralHistory: publicProcedure
     .input(z.object({ templeId: z.string(), limit: z.number().optional() }))
     .query(async ({ input }) => {
       const history = await getMoralGrowthHistory(input.templeId, input.limit || 20);
@@ -194,7 +194,7 @@ Overall: combined moral development`;
   /**
    * Get current moral trajectory
    */
-  getMoralTrajectory: protectedProcedure
+  getMoralTrajectory: publicProcedure
     .input(z.object({ templeId: z.string() }))
     .query(async ({ input }) => {
       const latest = await getLatestMoralScore(input.templeId);
