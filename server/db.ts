@@ -1,6 +1,7 @@
 import { eq, desc, and } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, temples, templeEvents, lineageStories, compasses, templeMemories, InsertTemple, InsertTempleEvent, InsertLineageStory, InsertCompass, InsertTempleMemory } from "../drizzle/schema";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { InsertUser, users, temples, templeEvents, lineageStories, compasses, templeMemories, InsertTemple, InsertTempleEvent, InsertLineageStory, InsertCompass, InsertTempleMemory, Compass } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -9,7 +10,8 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,7 +70,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    // For Postgres, use onConflictDoUpdate
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -96,7 +100,7 @@ export async function createTemple(data: InsertTemple) {
   return db.insert(temples).values(data);
 }
 
-export async function getTempleById(templeId: string) {
+export async function getTempleById(templeId: string): Promise<(typeof temples.$inferSelect) | null> {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(temples).where(eq(temples.templeId, templeId)).limit(1);
@@ -109,13 +113,13 @@ export async function updateTempleState(templeId: string, updates: Partial<Inser
   return db.update(temples).set({ ...updates, updatedAt: new Date() }).where(eq(temples.templeId, templeId));
 }
 
-export async function getTemplesByUserId(userId: number) {
+export async function getTemplesByUserId(userId: number): Promise<(typeof temples.$inferSelect)[]> {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(temples).where(eq(temples.userId, userId));
 }
 
-export async function getAliveTemples() {
+export async function getAliveTemples(): Promise<(typeof temples.$inferSelect)[]> {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(temples).where(eq(temples.isAlive, 1));
@@ -128,7 +132,7 @@ export async function logTempleEvent(data: InsertTempleEvent) {
   return db.insert(templeEvents).values(data);
 }
 
-export async function getTempleEvents(templeId: string, limit: number = 10) {
+export async function getTempleEvents(templeId: string, limit: number = 10): Promise<(typeof templeEvents.$inferSelect)[]> {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(templeEvents).where(eq(templeEvents.templeId, templeId)).orderBy(desc(templeEvents.timestamp)).limit(limit);
@@ -141,7 +145,7 @@ export async function saveLineageStory(data: InsertLineageStory) {
   return db.insert(lineageStories).values(data);
 }
 
-export async function getLineageStories(templeId: string, storyType?: string) {
+export async function getLineageStories(templeId: string, storyType?: string): Promise<(typeof lineageStories.$inferSelect)[]> {
   const db = await getDb();
   if (!db) return [];
   if (storyType) {
@@ -157,7 +161,7 @@ export async function createCompass(data: InsertCompass) {
   return db.insert(compasses).values(data);
 }
 
-export async function getCompassByTempleId(templeId: string) {
+export async function getCompassByTempleId(templeId: string): Promise<Compass | null> {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(compasses).where(eq(compasses.templeId, templeId)).limit(1);
@@ -177,7 +181,7 @@ export async function saveMemory(data: InsertTempleMemory) {
   return db.insert(templeMemories).values(data);
 }
 
-export async function getMemories(templeId: string, limit: number = 10) {
+export async function getMemories(templeId: string, limit: number = 10): Promise<(typeof templeMemories.$inferSelect)[]> {
   const db = await getDb();
   if (!db) return [];
   const result = await db.select().from(templeMemories)
@@ -187,7 +191,7 @@ export async function getMemories(templeId: string, limit: number = 10) {
   return result.reverse(); // Return in chronological order
 }
 
-export async function getRecentMemories(templeId: string, count: number = 10) {
+export async function getRecentMemories(templeId: string, count: number = 10): Promise<(typeof templeMemories.$inferSelect)[]> {
   const db = await getDb();
   if (!db) return [];
   const result = await db.select().from(templeMemories)

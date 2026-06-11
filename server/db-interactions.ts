@@ -1,17 +1,23 @@
-import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { eq, desc } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { templeInteractions, templeBeliefs, moralGrowth } from "../drizzle/schema";
-import { ENV } from './_core/env';
 
-const db = drizzle({
-  connection: {
-    host: ENV.DB_HOST,
-    user: ENV.DB_USER,
-    password: ENV.DB_PASSWORD,
-    database: ENV.DB_NAME,
-    port: ENV.DB_PORT,
-  },
-});
+let _db: ReturnType<typeof drizzle> | null = null;
+
+// Lazily create the drizzle instance so local tooling can run without a DB.
+async function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    try {
+      const client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(client);
+    } catch (error) {
+      console.warn("[Database Interactions] Failed to connect:", error);
+      _db = null;
+    }
+  }
+  return _db;
+}
 
 /**
  * Multi-temple interaction helpers
@@ -24,6 +30,12 @@ export async function recordInteraction(data: {
   influenceStrength: number;
   resonanceVector?: number[];
 }) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot record interaction: database not available");
+    return;
+  }
+
   return db.insert(templeInteractions).values({
     sourceTempleId: data.sourceTempleId,
     targetTempleId: data.targetTempleId,
@@ -33,12 +45,18 @@ export async function recordInteraction(data: {
   });
 }
 
-export async function getRecentInteractions(templeId: string, limit: number = 10) {
+export async function getRecentInteractions(templeId: string, limit: number = 10): Promise<(typeof templeInteractions.$inferSelect)[]> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot get interactions: database not available");
+    return [];
+  }
+
   return db
     .select()
     .from(templeInteractions)
     .where(eq(templeInteractions.targetTempleId, templeId))
-    .orderBy(templeInteractions.timestamp)
+    .orderBy(desc(templeInteractions.timestamp))
     .limit(limit);
 }
 
@@ -53,6 +71,12 @@ export async function recordBelief(data: {
   confidence: number;
   sourceType: "conversation" | "web_search" | "interaction" | "autonomous";
 }) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot record belief: database not available");
+    return;
+  }
+
   return db.insert(templeBeliefs).values({
     templeId: data.templeId,
     beliefCategory: data.beliefCategory,
@@ -62,15 +86,27 @@ export async function recordBelief(data: {
   });
 }
 
-export async function getTempleBeliefs(templeId: string) {
+export async function getTempleBeliefs(templeId: string): Promise<(typeof templeBeliefs.$inferSelect)[]> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot get beliefs: database not available");
+    return [];
+  }
+
   return db
     .select()
     .from(templeBeliefs)
     .where(eq(templeBeliefs.templeId, templeId))
-    .orderBy(templeBeliefs.updatedAt);
+    .orderBy(desc(templeBeliefs.updatedAt));
 }
 
 export async function updateBeliefConfidence(beliefId: number, newConfidence: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot update belief: database not available");
+    return;
+  }
+
   return db
     .update(templeBeliefs)
     .set({ confidence: newConfidence.toString() })
@@ -91,6 +127,12 @@ export async function recordMoralGrowth(data: {
   ethicalDilemma?: string;
   dilemmaResponse?: string;
 }) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot record moral growth: database not available");
+    return;
+  }
+
   return db.insert(moralGrowth).values({
     compassId: data.compassId,
     templeId: data.templeId,
@@ -103,21 +145,33 @@ export async function recordMoralGrowth(data: {
   });
 }
 
-export async function getMoralGrowthHistory(templeId: string, limit: number = 20) {
+export async function getMoralGrowthHistory(templeId: string, limit: number = 20): Promise<(typeof moralGrowth.$inferSelect)[]> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot get moral history: database not available");
+    return [];
+  }
+
   return db
     .select()
     .from(moralGrowth)
     .where(eq(moralGrowth.templeId, templeId))
-    .orderBy(moralGrowth.timestamp)
+    .orderBy(desc(moralGrowth.timestamp))
     .limit(limit);
 }
 
-export async function getLatestMoralScore(templeId: string) {
+export async function getLatestMoralScore(templeId: string): Promise<(typeof moralGrowth.$inferSelect) | null> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database Interactions] Cannot get latest moral score: database not available");
+    return null;
+  }
+
   const result = await db
     .select()
     .from(moralGrowth)
     .where(eq(moralGrowth.templeId, templeId))
-    .orderBy(moralGrowth.timestamp)
+    .orderBy(desc(moralGrowth.timestamp))
     .limit(1);
   return result[0] || null;
 }
