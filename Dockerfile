@@ -2,23 +2,20 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Copy package files
-COPY pnpm-lock.yaml package.json ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies with npm
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build
-RUN pnpm build
+RUN npm run build
 
 # Expose port
 EXPOSE 3000
 
 # Start
-CMD ["node", "dist/server/index.js"]
+CMD ["npm", "start"]
