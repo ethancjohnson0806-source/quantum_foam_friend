@@ -5,3 +5,6 @@ buildCommand = "pnpm install && pnpm build"
 [deploy]
 startCommand = "node dist/server/index.js"
 restartPolicyMaxRetries = 5
+
+[environments.production]
+nixpacks.providers = ["nodejs-pnpm"]
